@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#06051a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Football Monopoly</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%;
+    background: #06051a;
+    color: #f3f1ff;
+    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    background:
+      radial-gradient(ellipse at 50% 28%, #1a2850 0%, #06051a 62%);
+  }
+  .card {
+    width: min(92vw, 22rem);
+    text-align: center;
+    padding: 2.2rem 1.4rem 1.8rem;
+  }
+  h1 {
+    margin: 0 0 .35rem;
+    font-weight: 200;
+    letter-spacing: .14em;
+    font-size: 1.7rem;
+    text-indent: .42em;
+    background: linear-gradient(180deg, #fff8e6 0%, #ffd890 50%, #b9a6ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  p.tag {
+    margin: 0 0 1.8rem;
+    opacity: .45;
+    font-size: .78rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+  form { display: flex; flex-direction: column; gap: .75rem; }
+  input[type="password"] {
+    width: 100%;
+    border: 1px solid rgba(255, 216, 144, .22);
+    background: rgba(8,7,24,.65);
+    color: #fff8e6;
+    border-radius: 999px;
+    padding: .95rem 1.2rem;
+    font-size: 16px;
+    letter-spacing: .06em;
+    outline: none;
+    text-align: center;
+  }
+  input[type="password"]:focus {
+    border-color: rgba(255, 216, 144, .55);
+    box-shadow: 0 0 0 3px rgba(255, 200, 120, .15);
+  }
+  button {
+    border: 0;
+    border-radius: 999px;
+    padding: .95rem 1.2rem;
+    font-size: .95rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #140e06;
+    background: linear-gradient(180deg, #fff0c8, #ffd890);
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button[disabled] { opacity: .55; cursor: default; }
+  .err {
+    min-height: 1.2rem;
+    margin: .8rem 0 0;
+    color: #ffb4c4;
+    font-size: .85rem;
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .err.show { opacity: 1; }
+  body.loading .card { visibility: hidden; }
+</style>
+</head>
+<body class="loading">
+  <div class="card">
+    <h1>FOOTBALL</h1>
+    <p class="tag">Temporary play</p>
+    <form id="f" autocomplete="off">
+      <input id="pw" type="password" name="password" autocomplete="off" placeholder="Access code" inputmode="numeric" autofocus>
+      <button type="submit" id="go">Enter</button>
+    </form>
+    <p class="err" id="err"></p>
+  </div>
+<script>
+(() => {
+const form=document.getElementById('f'), input=document.getElementById('pw'),button=document.getElementById('go'),error=document.getElementById('err');
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+document.body.classList.remove('loading');
+form.addEventListener('submit',async e=>{
+e.preventDefault();button.disabled=true;error.classList.remove('show');
+try {
+const r=await fetch('payload.json',{cache:'no-store'});if(!r.ok)throw new Error('load');const p=await r.json();
+const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(input.value),'PBKDF2',false,['deriveKey']);
+const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(p.salt),iterations:p.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+const data=b64(p.data),tag=b64(p.tag),combined=new Uint8Array(data.length+tag.length);combined.set(data);combined.set(tag,data.length);
+const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(p.iv)},key,combined);input.value='';
+document.open();document.write(new TextDecoder().decode(plain));document.close();
+} catch(err) { input.value='';error.textContent=err.message==='load'?'Could not load game. Try again.':'Wrong code';error.classList.add('show');button.disabled=false;input.focus();}
+});
+})();
+</script></body></html>
